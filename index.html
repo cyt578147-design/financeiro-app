@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0F141B">
+<title>Financeiro e Horas</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+  :root{
+    --bg:#0F141B; --card:#161D27; --elevado:#1C2530; --borda:#2A3340; --borda-suave:#212A35;
+    --ouro:#C9A34A; --ouro-suave:#8A7539; --verde:#4ADE9A; --verde-suave:#1F5B44;
+    --vermelho:#F0685C; --vermelho-suave:#5B2A26; --texto:#EDEBE3; --texto-sec:#8B93A1; --texto-mudo:#525A66;
+    --azul:#5A9BD8; --azul-suave:#20415B;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--texto);font-family:'Space Grotesk','Segoe UI',sans-serif;padding:0 0 60px;min-height:100vh;}
+  .num{font-family:'JetBrains Mono',monospace;}
+  .wrap{max-width:520px;margin:0 auto;padding:0 16px;}
+  .hidden{display:none !important;}
+
+  .topo{position:sticky;top:0;background:var(--bg);z-index:20;padding:20px 16px 8px;border-bottom:1px solid var(--borda-suave);}
+  .topo-linha{max-width:488px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;position:relative;}
+  .eyebrow{font-size:11px;letter-spacing:.14em;color:var(--ouro);font-weight:600;text-transform:uppercase;}
+  h1{font-size:21px;font-weight:600;margin:2px 0 0;}
+  .menu-btn{background:none;border:1px solid var(--borda);color:var(--texto-sec);border-radius:8px;width:36px;height:36px;cursor:pointer;font-size:18px;line-height:1;}
+  .menu-dropdown{position:absolute;top:44px;right:0;background:var(--elevado);border:1px solid var(--borda);border-radius:10px;min-width:200px;box-shadow:0 8px 24px rgba(0,0,0,.4);z-index:30;overflow:hidden;display:none;}
+  .menu-dropdown.aberto{display:block;}
+  .menu-item{padding:11px 14px;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;color:var(--texto);}
+  .menu-item:hover{background:var(--card);}
+  .menu-item.ativo{color:var(--ouro);}
+  .menu-sep{height:1px;background:var(--borda-suave);margin:2px 0;}
+  .menu-item.sair{color:var(--vermelho);font-size:12px;}
+  .status{font-size:11px;color:var(--texto-mudo);margin-top:2px;}
+
+  .login-box{max-width:340px;margin:80px auto;background:var(--card);border:1px solid var(--borda-suave);border-radius:12px;padding:26px;}
+  .login-box h2{font-size:17px;font-weight:600;margin:0 0 4px;}
+  .login-box p{font-size:13px;color:var(--texto-sec);margin:0 0 18px;}
+  .login-box label{font-size:12px;color:var(--texto-sec);}
+  .login-box input{width:100%;background:var(--bg);border:1px solid var(--borda);border-radius:6px;padding:10px;font-size:14px;margin:5px 0 12px;color:var(--texto);}
+  .login-box button{width:100%;background:var(--ouro);border:none;color:#241D0C;font-weight:600;border-radius:6px;padding:11px 0;cursor:pointer;font-size:14px;margin-top:4px;}
+  .login-alt{text-align:center;font-size:12px;color:var(--texto-sec);margin-top:14px;cursor:pointer;text-decoration:underline;}
+  .login-erro{background:var(--vermelho-suave);color:#FCC;padding:8px 12px;border-radius:6px;font-size:12px;margin-bottom:12px;}
+
+  .nav{display:flex;align-items:center;justify-content:space-between;margin:16px 0 10px;}
+  .nav button{background:none;border:1px solid var(--borda);color:var(--texto);border-radius:6px;width:32px;height:32px;cursor:pointer;font-size:16px;}
+  .nav .titulo{font-size:15px;font-weight:500;}
+  .nav .titulo span{color:var(--texto-sec);}
+
+  .visao-toggle{display:flex;gap:6px;margin-bottom:14px;}
+  .visao-btn{flex:1;background:none;border:1px solid var(--borda);color:var(--texto-sec);border-radius:6px;padding:7px 0;font-size:12px;cursor:pointer;}
+  .visao-btn.ativo{border-color:var(--ouro);color:var(--ouro);background:rgba(201,163,74,0.08);}
+
+  .grafico-box{background:var(--card);border:1px solid var(--borda-suave);border-radius:12px;padding:14px 8px 6px;margin-bottom:16px;}
+  .grafico-titulo{font-size:12.5px;color:var(--texto-sec);padding:0 8px 8px;font-weight:500;}
+
+  .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:6px;}
+  .card{background:var(--card);border-radius:10px;padding:11px 12px;border:1px solid var(--borda-suave);}
+  .card.ouro{border-color:var(--ouro-suave);}
+  .card .label{font-size:10.5px;color:var(--texto-sec);}
+  .card .valor{font-size:14px;font-weight:700;margin-top:3px;}
+  .verde{color:var(--verde);} .vermelho{color:var(--vermelho);} .azul{color:var(--azul);}
+
+  .meta-linha{font-size:11px;color:var(--texto-sec);margin:0 0 16px 2px;}
+  .meta-editar{color:var(--ouro);text-decoration:underline;cursor:pointer;}
+
+  .categorias-box{background:var(--card);border:1px solid var(--borda-suave);border-radius:12px;padding:14px 14px 6px;margin-bottom:14px;}
+  .categorias-titulo{font-size:12.5px;color:var(--texto-sec);font-weight:500;margin-bottom:10px;}
+  .cat-linha{display:flex;align-items:center;gap:8px;margin-bottom:9px;}
+  .cat-nome{font-size:11.5px;color:var(--texto-sec);width:84px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .cat-barra-fundo{flex:1;height:7px;background:var(--borda-suave);border-radius:4px;overflow:hidden;}
+  .cat-barra{height:100%;border-radius:4px;}
+  .cat-valor{font-size:11px;min-width:74px;text-align:right;color:var(--texto);}
+
+  .cal{background:var(--card);border:1px solid var(--borda-suave);border-radius:12px;padding:12px;margin-bottom:18px;margin-top:14px;}
+  .cal-cabecalho{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-bottom:6px;}
+  .cal-cabecalho div{text-align:center;font-size:10px;color:var(--texto-mudo);font-weight:600;}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;}
+  .dia{aspect-ratio:1;border-radius:7px;border:1px solid var(--borda-suave);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:border-color .15s;position:relative;}
+  .dia:hover{border-color:var(--ouro);}
+  .dia .n{font-size:11px;color:var(--texto-sec);}
+  .dia .v{font-size:8.5px;margin-top:1px;}
+  .dia.hoje .n{color:var(--ouro);font-weight:700;}
+  .dia .nota-dot{position:absolute;top:3px;right:4px;width:4px;height:4px;border-radius:50%;background:var(--ouro);}
+
+  .rodape{font-size:11px;color:var(--texto-mudo);text-align:center;margin-top:14px;}
+
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:50;padding:20px;}
+  .overlay.aberto{display:flex;}
+  .modal{background:var(--elevado);border:1px solid var(--borda);border-radius:12px;padding:22px;width:320px;max-width:100%;max-height:88vh;overflow-y:auto;}
+  .modal .titulo{font-size:15px;font-weight:600;margin-bottom:16px;}
+  .modal label{font-size:12px;color:var(--texto-sec);}
+  .modal input, .modal select{width:100%;background:var(--bg);border:1px solid var(--borda);border-radius:6px;padding:9px 10px;font-size:15px;margin:6px 0 14px;color:var(--texto);}
+  .modal select{font-family:inherit;}
+  .modal-btns{display:flex;gap:8px;}
+  .btn-limpar{flex:1;background:none;border:1px solid var(--borda);color:var(--texto-sec);border-radius:6px;padding:9px 0;cursor:pointer;font-size:13px;}
+  .btn-salvar{flex:2;background:var(--ouro);border:none;color:#241D0C;font-weight:600;border-radius:6px;padding:9px 0;cursor:pointer;font-size:13px;}
+  .erro{background:var(--vermelho-suave);color:#FCC;padding:8px 12px;border-radius:6px;font-size:13px;margin:10px 16px 0;max-width:488px;margin-left:auto;margin-right:auto;}
+
+  .comp-box{background:var(--card);border:1px solid var(--borda-suave);border-radius:12px;padding:14px 8px 10px;margin-bottom:16px;}
+  .comp-titulo{font-size:12.5px;color:var(--texto-sec);padding:0 8px 8px;font-weight:500;}
+</style>
+</head>
+<body>
+
+<div id="telaLogin" class="login-box">
+  <h2>Entrar</h2>
+  <p>Use o mesmo email e senha no PC e no celular para sincronizar.</p>
+  <div id="loginErro"></div>
+  <label>Email</label>
+  <input type="email" id="loginEmail" placeholder="voce@email.com">
+  <label>Senha</label>
+  <input type="password" id="loginSenha" placeholder="mínimo 6 caracteres">
+  <button id="btnEntrar">Entrar</button>
+  <div class="login-alt" id="btnAlternar">Ainda não tenho conta — criar agora</div>
+</div>
+
+<div id="app" class="hidden">
+  <div class="topo">
+    <div class="topo-linha">
+      <div>
+        <div class="eyebrow" id="eyebrowModo">Livro caixa</div>
+        <h1 id="tituloApp">Financeiro</h1>
+        <div class="status" id="status">sincronizado</div>
+      </div>
+      <button class="menu-btn" id="menuBtn">⋮</button>
+      <div class="menu-dropdown" id="menuDropdown">
+        <div class="menu-item" id="itemFinanceiro">Financeiro <span id="checkFin"></span></div>
+        <div class="menu-item" id="itemHoras">Horas trabalhadas <span id="checkHoras"></span></div>
+        <div class="menu-item" id="itemComparativo">Comparativo <span id="checkComp"></span></div>
+        <div class="menu-sep"></div>
+        <div class="menu-item sair" id="itemSair">Sair da conta</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="erroBox"></div>
+
+  <div class="wrap">
+
+    <div id="secaoMensal">
+      <div class="nav">
+        <button id="btnAnterior">‹</button>
+        <div class="titulo" id="tituloMes"></div>
+        <button id="btnProximo">›</button>
+      </div>
+
+      <div class="visao-toggle">
+        <button class="visao-btn ativo" id="btnVisaoMes">Mês</button>
+        <button class="visao-btn" id="btnVisaoSemana">Semana</button>
+      </div>
+
+      <div class="grafico-box">
+        <div class="grafico-titulo" id="graficoTitulo">Saldo acumulado no mês</div>
+        <svg id="grafico" viewBox="0 0 480 150" style="width:100%;height:150px;"></svg>
+      </div>
+
+      <div class="cards" id="cardsFinanceiro">
+        <div class="card"><div class="label">Lucro</div><div class="valor verde num" id="totalLucro"></div></div>
+        <div class="card"><div class="label">Gasto</div><div class="valor vermelho num" id="totalGasto"></div></div>
+        <div class="card ouro"><div class="label">Saldo</div><div class="valor num" id="totalSaldo"></div></div>
+      </div>
+
+      <div class="cards hidden" id="cardsHoras">
+        <div class="card"><div class="label">Total</div><div class="valor azul num" id="totalHoras"></div></div>
+        <div class="card"><div class="label">Média por dia</div><div class="valor azul num" id="mediaHoras"></div></div>
+        <div class="card ouro"><div class="label">Dias registrados</div><div class="valor num" id="diasRegistrados"></div></div>
+      </div>
+      <div class="meta-linha hidden" id="metaLinha">Meta diária: <span id="metaValor">8h</span> · <span class="meta-editar" id="metaEditar">editar</span></div>
+
+      <div class="categorias-box hidden" id="categoriasBox"></div>
+      <div class="categorias-box hidden" id="origensBox"></div>
+
+      <div class="cal">
+        <div class="cal-cabecalho"><div>D</div><div>S</div><div>T</div><div>Q</div><div>Q</div><div>S</div><div>S</div></div>
+        <div class="cal-grid" id="calGrid"></div>
+      </div>
+
+      <div class="rodape" id="rodape">Toque em um dia para lançar gasto e lucro.</div>
+    </div>
+
+    <div id="secaoComparativo" class="hidden">
+      <div class="comp-box">
+        <div class="comp-titulo">Saldo financeiro — últimos 12 meses</div>
+        <svg id="graficoCompFin" viewBox="0 0 480 150" style="width:100%;height:150px;"></svg>
+      </div>
+      <div class="comp-box">
+        <div class="comp-titulo">Horas trabalhadas — últimos 12 meses</div>
+        <svg id="graficoCompHoras" viewBox="0 0 480 150" style="width:100%;height:150px;"></svg>
+      </div>
+      <div class="rodape">Comparativo dos últimos 12 meses a partir do mês selecionado no Financeiro.</div>
+    </div>
+
+  </div>
+</div>
+
+<div class="overlay" id="overlayFin">
+  <div class="modal">
+    <div class="titulo" id="modalTituloFin"></div>
+    <label>Lucro</label>
+    <input type="text" inputmode="decimal" placeholder="0,00" id="lucroInput" class="num">
+    <label>De onde veio o lucro (opcional)</label>
+    <input type="text" id="origemInput" list="origensList" placeholder="ex: YouTube, TikTok, Patrocínio...">
+    <datalist id="origensList"></datalist>
+    <label>Gasto</label>
+    <input type="text" inputmode="decimal" placeholder="0,00" id="gastoInput" class="num">
+    <label>Categoria do gasto</label>
+    <select id="categoriaInput"></select>
+    <label>Nota (opcional)</label>
+    <input type="text" id="notaInputFin" placeholder="ex: microfone novo">
+    <div class="modal-btns">
+      <button class="btn-limpar" id="btnLimparFin">Limpar</button>
+      <button class="btn-salvar" id="btnSalvarFin">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="overlayHoras">
+  <div class="modal">
+    <div class="titulo" id="modalTituloHoras"></div>
+    <label>Comecei às</label>
+    <input type="time" id="horaInicio">
+    <label>Terminei às</label>
+    <input type="time" id="horaFim">
+    <label>Nota (opcional)</label>
+    <input type="text" id="notaInputHoras" placeholder="ex: gravação vídeo Solo Leveling">
+    <div class="modal-btns">
+      <button class="btn-limpar" id="btnLimparHoras">Limpar</button>
+      <button class="btn-salvar" id="btnSalvarHoras">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyDE8zeRoFvwzJQyA2k_PnSKl4ScbXcZCHg",
+  authDomain: "meu-financeiro-90ba6.firebaseapp.com",
+  projectId: "meu-financeiro-90ba6",
+  storageBucket: "meu-financeiro-90ba6.firebasestorage.app",
+  messagingSenderId: "695838792233",
+  appId: "1:695838792233:web:7d9b2ec4b825d1b43c9a38"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const MESES_ABREV = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+const CATEGORIAS = [
+  { id:'equipamento', nome:'Equipamento', cor:'#5A9BD8' },
+  { id:'assinatura', nome:'Assinatura', cor:'#C9A34A' },
+  { id:'marketing', nome:'Marketing', cor:'#D4537E' },
+  { id:'alimentacao', nome:'Alimentação', cor:'#639922' },
+  { id:'transporte', nome:'Transporte', cor:'#7F77DD' },
+  { id:'imposto', nome:'Imposto', cor:'#F0685C' },
+  { id:'outros', nome:'Outros', cor:'#8B93A1' },
+];
+const ORIGENS_SUGESTAO = ['YouTube','TikTok','Instagram','Produto (7 Noites de Paz)','Patrocínio','Outro'];
+const CORES_ORIGEM = ['#1D9E75','#378ADD','#7F77DD','#D4537E','#EF9F27','#639922','#8B93A1','#C9A34A'];
+
+const hoje = new Date();
+let ano = hoje.getFullYear();
+let mes = hoje.getMonth();
+let diaSelecionado = null;
+let modo = 'financeiro';
+let visao = 'mes'; // ou 'semana'
+let semanaInicioDia = 1;
+let uid = null;
+let unsubscribe = null;
+let dadosAtuais = {};
+let metaHorasDia = 8;
+
+const fmt = v => (v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const fmtShort = v => { const n = Math.round(v); if (Math.abs(n) >= 1000) return (n/1000).toFixed(1).replace('.0','') + 'k'; return String(n); };
+const fmtHoras = v => (Math.round(v*10)/10).toLocaleString('pt-BR') + 'h';
+
+(function popularListas(){
+  document.getElementById('categoriaInput').innerHTML = '<option value="">Sem categoria</option>' + CATEGORIAS.map(c => `<option value="${c.id}">${c.nome}</option>`).join('');
+  document.getElementById('origensList').innerHTML = ORIGENS_SUGESTAO.map(o => `<option value="${o}"></option>`).join('');
+})();
+
+function docRef(){
+  const chave = `${ano}-${String(mes+1).padStart(2,'0')}`;
+  return db.collection('usuarios').doc(uid).collection(modo).doc(chave);
+}
+
+/* ================= LOGIN ================= */
+document.getElementById('btnAlternar').onclick = () => {
+  const alt = document.getElementById('btnAlternar');
+  window.__criarConta = !window.__criarConta;
+  alt.textContent = window.__criarConta ? 'Já tenho conta — entrar' : 'Ainda não tenho conta — criar agora';
+  document.getElementById('btnEntrar').textContent = window.__criarConta ? 'Criar conta' : 'Entrar';
+};
+
+document.getElementById('btnEntrar').onclick = async () => {
+  const email = document.getElementById('loginEmail').value.trim();
+  const senha = document.getElementById('loginSenha').value;
+  const erroBox = document.getElementById('loginErro');
+  erroBox.innerHTML = '';
+  try {
+    if (window.__criarConta) await auth.createUserWithEmailAndPassword(email, senha);
+    else await auth.signInWithEmailAndPassword(email, senha);
+  } catch (e) {
+    erroBox.innerHTML = `<div class="login-erro">${traduzErro(e.code)}</div>`;
+  }
+};
+
+function traduzErro(code){
+  const mapa = {
+    'auth/invalid-email': 'Email inválido.',
+    'auth/user-not-found': 'Conta não encontrada. Crie uma conta primeiro.',
+    'auth/wrong-password': 'Senha incorreta.',
+    'auth/email-already-in-use': 'Esse email já tem uma conta. Tente entrar.',
+    'auth/weak-password': 'A senha precisa ter pelo menos 6 caracteres.',
+    'auth/invalid-credential': 'Email ou senha incorretos.',
+  };
+  return mapa[code] || 'Não foi possível entrar. Confira os dados.';
+}
+
+auth.onAuthStateChanged(async (user) => {
+  if (user) {
+    uid = user.uid;
+    document.getElementById('telaLogin').classList.add('hidden');
+    document.getElementById('app').classList.remove('hidden');
+    await carregarMeta();
+    carregarMes();
+  } else {
+    uid = null;
+    document.getElementById('telaLogin').classList.remove('hidden');
+    document.getElementById('app').classList.add('hidden');
+    if (unsubscribe) unsubscribe();
+  }
+});
+
+document.getElementById('itemSair').onclick = () => auth.signOut();
+
+/* ================= META DE HORAS ================= */
+async function carregarMeta(){
+  try {
+    const snap = await db.collection('usuarios').doc(uid).get();
+    metaHorasDia = (snap.exists && snap.data().metaHorasDia) ? snap.data().metaHorasDia : 8;
+  } catch(e){ metaHorasDia = 8; }
+  document.getElementById('metaValor').textContent = fmtHoras(metaHorasDia);
+}
+document.getElementById('metaEditar').onclick = async () => {
+  const novo = prompt('Nova meta diária de horas trabalhadas:', metaHorasDia);
+  if (novo === null) return;
+  const val = parseFloat(String(novo).replace(',','.'));
+  if (isNaN(val) || val<=0) return;
+  metaHorasDia = val;
+  document.getElementById('metaValor').textContent = fmtHoras(metaHorasDia);
+  try { await db.collection('usuarios').doc(uid).set({ metaHorasDia: val }, { merge:true }); } catch(e){}
+  render();
+};
+
+/* ================= MENU ================= */
+const menuBtn = document.getElementById('menuBtn');
+const menuDropdown = document.getElementById('menuDropdown');
+menuBtn.onclick = () => menuDropdown.classList.toggle('aberto');
+document.addEventListener('click', (e) => {
+  if (!menuBtn.contains(e.target) && !menuDropdown.contains(e.target)) menuDropdown.classList.remove('aberto');
+});
+document.getElementById('itemFinanceiro').onclick = () => trocarModo('financeiro');
+document.getElementById('itemHoras').onclick = () => trocarModo('horas');
+document.getElementById('itemComparativo').onclick = () => trocarModo('comparativo');
+
+function trocarModo(novoModo){
+  modo = novoModo;
+  menuDropdown.classList.remove('aberto');
+  document.getElementById('checkFin').textContent = modo === 'financeiro' ? '✓' : '';
+  document.getElementById('checkHoras').textContent = modo === 'horas' ? '✓' : '';
+  document.getElementById('checkComp').textContent = modo === 'comparativo' ? '✓' : '';
+  document.getElementById('itemFinanceiro').classList.toggle('ativo', modo === 'financeiro');
+  document.getElementById('itemHoras').classList.toggle('ativo', modo === 'horas');
+  document.getElementById('itemComparativo').classList.toggle('ativo', modo === 'comparativo');
+
+  const secaoMensal = document.getElementById('secaoMensal');
+  const secaoComparativo = document.getElementById('secaoComparativo');
+
+  if (modo === 'comparativo'){
+    if (unsubscribe) unsubscribe();
+    secaoMensal.classList.add('hidden');
+    secaoComparativo.classList.remove('hidden');
+    document.getElementById('eyebrowModo').textContent = 'Visão geral';
+    document.getElementById('tituloApp').textContent = 'Comparativo';
+    carregarComparativo();
+    return;
+  }
+
+  secaoComparativo.classList.add('hidden');
+  secaoMensal.classList.remove('hidden');
+  const ehFin = modo === 'financeiro';
+  document.getElementById('eyebrowModo').textContent = ehFin ? 'Livro caixa' : 'Ponto';
+  document.getElementById('tituloApp').textContent = ehFin ? 'Financeiro' : 'Horas trabalhadas';
+  document.getElementById('cardsFinanceiro').classList.toggle('hidden', !ehFin);
+  document.getElementById('cardsHoras').classList.toggle('hidden', ehFin);
+  document.getElementById('metaLinha').classList.toggle('hidden', ehFin);
+  document.getElementById('categoriasBox').classList.toggle('hidden', !ehFin);
+  document.getElementById('origensBox').classList.toggle('hidden', !ehFin);
+  document.getElementById('rodape').textContent = ehFin ? 'Toque em um dia para lançar gasto e lucro.' : 'Toque em um dia para marcar início e fim do expediente.';
+
+  carregarMes();
+}
+trocarModo('financeiro');
+
+/* ================= VISÃO MÊS / SEMANA ================= */
+function calcularSemanaPadrao(){
+  const refDia = (mes===hoje.getMonth() && ano===hoje.getFullYear()) ? hoje.getDate() : 1;
+  const diaSemana = new Date(ano, mes, refDia).getDay();
+  let inicio = refDia - diaSemana;
+  if (inicio < 1) inicio = 1;
+  return inicio;
+}
+document.getElementById('btnVisaoMes').onclick = () => {
+  visao = 'mes';
+  document.getElementById('btnVisaoMes').classList.add('ativo');
+  document.getElementById('btnVisaoSemana').classList.remove('ativo');
+  render();
+};
+document.getElementById('btnVisaoSemana').onclick = () => {
+  visao = 'semana';
+  semanaInicioDia = calcularSemanaPadrao();
+  document.getElementById('btnVisaoSemana').classList.add('ativo');
+  document.getElementById('btnVisaoMes').classList.remove('ativo');
+  render();
+};
+
+function obterIntervaloVisivel(diasNoMes){
+  if (visao === 'mes') return { inicio: 1, fim: diasNoMes };
+  const fim = Math.min(diasNoMes, semanaInicioDia + 6);
+  return { inicio: semanaInicioDia, fim };
+}
+
+/* ================= DADOS (tempo real) ================= */
+function carregarMes(){
+  if (!uid || modo === 'comparativo') return;
+  if (unsubscribe) unsubscribe();
+  document.getElementById('status').textContent = 'sincronizando…';
+  unsubscribe = docRef().onSnapshot((snap) => {
+    dadosAtuais = snap.exists ? (snap.data().dias || {}) : {};
+    document.getElementById('status').textContent = 'sincronizado';
+    document.getElementById('erroBox').innerHTML = '';
+    render();
+  }, (err) => {
+    document.getElementById('erroBox').innerHTML = `<div class="erro">Não foi possível sincronizar: ${err.message}</div>`;
+  });
+}
+
+async function salvarDados(novosDias){
+  document.getElementById('status').textContent = 'salvando…';
+  try {
+    await docRef().set({ dias: novosDias });
+  } catch (e) {
+    document.getElementById('erroBox').innerHTML = `<div class="erro">Erro ao salvar: ${e.message}</div>`;
+  }
+}
+
+/* ================= COMPARATIVO ================= */
+async function carregarComparativo(){
+  if (!uid) return;
+  document.getElementById('status').textContent = 'carregando…';
+  const chaves = [];
+  let a = ano, m = mes;
+  for (let i=0;i<12;i++){
+    chaves.unshift({ chave: `${a}-${String(m+1).padStart(2,'0')}`, mesIdx: m });
+    m--; if (m<0){ m=11; a--; }
+  }
+  try {
+    const finSnaps = await Promise.all(chaves.map(c => db.collection('usuarios').doc(uid).collection('financeiro').doc(c.chave).get()));
+    const horasSnaps = await Promise.all(chaves.map(c => db.collection('usuarios').doc(uid).collection('horas').doc(c.chave).get()));
+    const saldosMensais = finSnaps.map(snap => {
+      const dias = snap.exists ? (snap.data().dias||{}) : {};
+      let s=0; Object.values(dias).forEach(e=>{ s += (e.lucro||0)-(e.gasto||0); });
+      return s;
+    });
+    const horasMensais = horasSnaps.map(snap => {
+      const dias = snap.exists ? (snap.data().dias||{}) : {};
+      let h=0; Object.values(dias).forEach(e=>{ if(e.inicio && e.fim) h += horasEntre(e.inicio,e.fim); });
+      return h;
+    });
+    const rotulos = chaves.map(c => MESES_ABREV[c.mesIdx]);
+    desenharBarrasComparativo('graficoCompFin', saldosMensais, rotulos, { permiteNegativo:true, corPos:'#4ADE9A', corNeg:'#F0685C', formatador: fmtShort });
+    desenharBarrasComparativo('graficoCompHoras', horasMensais, rotulos, { permiteNegativo:false, corPos:'#5A9BD8', formatador: fmtHoras });
+    document.getElementById('status').textContent = 'sincronizado';
+    document.getElementById('erroBox').innerHTML = '';
+  } catch(e){
+    document.getElementById('erroBox').innerHTML = `<div class="erro">Erro ao carregar comparativo: ${e.message}</div>`;
+  }
+}
+
+function desenharBarrasComparativo(elId, valores, rotulos, opcoes){
+  const W=480,H=150,padL=32,padR=6,padT=8,padB=22;
+  const n = valores.length;
+  const permiteNeg = opcoes.permiteNegativo;
+  const maxV = Math.max(permiteNeg?0:1, ...valores);
+  const minV = permiteNeg ? Math.min(0, ...valores) : 0;
+  const range = (maxV-minV)||1;
+  const larguraTotal = (W-padL-padR)/n;
+  const larguraBarra = Math.max(3, larguraTotal*0.55);
+  const y0 = padT + (1-(0-minV)/range)*(H-padT-padB);
+  let barras='', rotulosTxt='';
+  valores.forEach((v,i)=>{
+    const xc = padL + i*larguraTotal + larguraTotal/2;
+    const yv = padT + (1-(v-minV)/range)*(H-padT-padB);
+    const yTop = Math.min(y0, yv);
+    const alt = Math.max(Math.abs(yv-y0), 1);
+    const cor = v>=0 ? (opcoes.corPos||'#4ADE9A') : (opcoes.corNeg||'#F0685C');
+    barras += `<rect x="${(xc-larguraBarra/2).toFixed(1)}" y="${yTop.toFixed(1)}" width="${larguraBarra.toFixed(1)}" height="${alt.toFixed(1)}" rx="1.5" fill="${cor}"/>`;
+    rotulosTxt += `<text x="${xc.toFixed(1)}" y="${H-6}" fill="#525A66" font-size="8" text-anchor="middle">${rotulos[i]}</text>`;
+  });
+  const linhaBase = permiteNeg
+    ? `<line x1="${padL}" y1="${y0}" x2="${W-padR}" y2="${y0}" stroke="#8A7539" stroke-dasharray="3 3" stroke-width="1"/>`
+    : `<line x1="${padL}" y1="${H-padB}" x2="${W-padR}" y2="${H-padB}" stroke="#2A3340" stroke-width="1"/>`;
+  document.getElementById(elId).innerHTML = `
+    ${linhaBase}
+    ${barras}
+    ${rotulosTxt}
+    <text x="4" y="${padT+5}" fill="#525A66" font-size="9">${opcoes.formatador(maxV)}</text>
+  `;
+}
+
+/* ================= RENDER MENSAL / SEMANAL ================= */
+function render(){
+  const diasNoMes = new Date(ano, mes+1, 0).getDate();
+  const { inicio, fim } = obterIntervaloVisivel(diasNoMes);
+
+  if (visao === 'mes'){
+    document.getElementById('tituloMes').innerHTML = `${MESES[mes]} <span>${ano}</span>`;
+  } else {
+    document.getElementById('tituloMes').innerHTML = `${inicio}–${fim} <span>${MESES_ABREV[mes]}</span>`;
+  }
+
+  if (modo === 'financeiro') renderFinanceiro(inicio, fim);
+  else renderHoras(inicio, fim);
+
+  const grid = document.getElementById('calGrid');
+  grid.innerHTML = '';
+  const primeiroDiaVisivel = new Date(ano, mes, inicio).getDay();
+  for (let i=0;i<primeiroDiaVisivel;i++) grid.appendChild(document.createElement('div'));
+  for (let d=inicio; d<=fim; d++){
+    grid.appendChild(criarCelulaDia(d));
+  }
+  if (visao === 'semana'){
+    const totalCels = primeiroDiaVisivel + (fim - inicio + 1);
+    for (let i=totalCels;i<7;i++) grid.appendChild(document.createElement('div'));
+  }
+}
+
+function criarCelulaDia(d){
+  const e = dadosAtuais[d];
+  const cel = document.createElement('div');
+  cel.className = 'dia' + (d===hoje.getDate() && mes===hoje.getMonth() && ano===hoje.getFullYear() ? ' hoje' : '');
+  let rotulo = '';
+  if (modo === 'financeiro' && e){
+    const saldoDia = (e.lucro||0)-(e.gasto||0);
+    cel.style.background = saldoDia>=0 ? 'var(--verde-suave)' : 'var(--vermelho-suave)';
+    rotulo = `<div class="v num ${saldoDia>=0?'verde':'vermelho'}">${fmtShort(saldoDia)}</div>`;
+  } else if (modo === 'horas' && e && e.inicio && e.fim){
+    cel.style.background = 'var(--azul-suave)';
+    rotulo = `<div class="v num azul">${fmtHoras(horasEntre(e.inicio,e.fim))}</div>`;
+  }
+  const notaDot = (e && e.nota) ? '<div class="nota-dot"></div>' : '';
+  cel.innerHTML = `${notaDot}<div class="n">${d}</div>${rotulo}`;
+  cel.onclick = () => abrirDia(d);
+  return cel;
+}
+
+function horasEntre(a,b){
+  const [h1,m1] = a.split(':').map(Number);
+  const [h2,m2] = b.split(':').map(Number);
+  let diff = (h2*60+m2) - (h1*60+m1);
+  if (diff < 0) diff += 24*60;
+  return diff/60;
+}
+
+function renderFinanceiro(inicio, fim){
+  let totalGasto=0, totalLucro=0;
+  for (let d=inicio; d<=fim; d++){
+    const e = dadosAtuais[d];
+    if (e){ totalGasto += e.gasto||0; totalLucro += e.lucro||0; }
+  }
+  const saldo = totalLucro - totalGasto;
+  document.getElementById('totalLucro').textContent = fmt(totalLucro);
+  document.getElementById('totalGasto').textContent = fmt(totalGasto);
+  const saldoEl = document.getElementById('totalSaldo');
+  saldoEl.textContent = fmt(saldo);
+  saldoEl.className = 'valor num ' + (saldo>=0?'verde':'vermelho');
+  document.getElementById('graficoTitulo').textContent = visao === 'mes' ? 'Saldo acumulado no mês' : 'Saldo acumulado na semana';
+
+  const pontos = [];
+  let acumulado = 0;
+  for (let d=inicio; d<=fim; d++){
+    const e = dadosAtuais[d];
+    if (e) acumulado += (e.lucro||0)-(e.gasto||0);
+    pontos.push(acumulado);
+  }
+  desenharAreaMontanha(pontos);
+  renderCategorias(inicio, fim);
+  renderOrigens(inicio, fim);
+}
+
+function renderCategorias(inicio, fim){
+  const totais = {};
+  for (let d=inicio; d<=fim; d++){
+    const e = dadosAtuais[d];
+    if (e && e.gasto && e.gasto>0){
+      const cat = e.categoria || 'outros';
+      totais[cat] = (totais[cat]||0) + e.gasto;
+    }
+  }
+  const box = document.getElementById('categoriasBox');
+  const entradas = Object.entries(totais).sort((a,b)=>b[1]-a[1]);
+  if (entradas.length === 0){ box.innerHTML=''; return; }
+  const max = entradas[0][1];
+  box.innerHTML = `<div class="categorias-titulo">Gastos por categoria</div>` + entradas.map(([id,total])=>{
+    const cat = CATEGORIAS.find(c=>c.id===id) || { nome:'Outros', cor:'#8B93A1' };
+    const pct = Math.max(6, Math.round((total/max)*100));
+    return `<div class="cat-linha">
+      <div class="cat-nome">${cat.nome}</div>
+      <div class="cat-barra-fundo"><div class="cat-barra" style="width:${pct}%;background:${cat.cor}"></div></div>
+      <div class="cat-valor num">${fmt(total)}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderOrigens(inicio, fim){
+  const totais = {};
+  for (let d=inicio; d<=fim; d++){
+    const e = dadosAtuais[d];
+    if (e && e.lucro && e.lucro>0){
+      const origem = (e.origem||'').trim() || 'Não informado';
+      totais[origem] = (totais[origem]||0) + e.lucro;
+    }
+  }
+  const box = document.getElementById('origensBox');
+  const entradas = Object.entries(totais).sort((a,b)=>b[1]-a[1]);
+  if (entradas.length === 0){ box.innerHTML=''; return; }
+  const max = entradas[0][1];
+  box.innerHTML = `<div class="categorias-titulo">Lucro por origem</div>` + entradas.map(([nome,total],i)=>{
+    const cor = CORES_ORIGEM[i % CORES_ORIGEM.length];
+    const pct = Math.max(6, Math.round((total/max)*100));
+    return `<div class="cat-linha">
+      <div class="cat-nome">${nome}</div>
+      <div class="cat-barra-fundo"><div class="cat-barra" style="width:${pct}%;background:${cor}"></div></div>
+      <div class="cat-valor num">${fmt(total)}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderHoras(inicio, fim){
+  const valores = [];
+  let total = 0, diasCom = 0;
+  for (let d=inicio; d<=fim; d++){
+    const e = dadosAtuais[d];
+    const h = (e && e.inicio && e.fim) ? horasEntre(e.inicio, e.fim) : 0;
+    if (h > 0) { total += h; diasCom++; }
+    valores.push(h);
+  }
+  document.getElementById('totalHoras').textContent = fmtHoras(total);
+  document.getElementById('mediaHoras').textContent = fmtHoras(diasCom ? total/diasCom : 0);
+  document.getElementById('diasRegistrados').textContent = diasCom;
+  document.getElementById('graficoTitulo').textContent = visao === 'mes' ? 'Horas trabalhadas por dia' : 'Horas trabalhadas na semana';
+  desenharBarras(valores);
+}
+
+/* ================= GRÁFICOS SVG (período visível) ================= */
+function desenharAreaMontanha(pontos){
+  const W=480,H=150,padL=36,padR=8,padT=8,padB=16;
+  const n = pontos.length;
+  const maxV = Math.max(0, ...pontos), minV = Math.min(0, ...pontos);
+  const range = (maxV-minV)||1;
+  const x = i => padL + (i/(n-1||1))*(W-padL-padR);
+  const y = v => padT + (1-(v-minV)/range)*(H-padT-padB);
+  const y0 = y(0);
+  const pathTop = pontos.map((v,i)=>`${i===0?'M':'L'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+  const pathArea = pathTop + ` L${x(n-1).toFixed(1)},${y0.toFixed(1)} L${x(0).toFixed(1)},${y0.toFixed(1)} Z`;
+  const offset = maxV<=0 ? 0 : (minV>=0 ? 1 : maxV/(maxV-minV));
+
+  document.getElementById('grafico').innerHTML = `
+    <defs>
+      <linearGradient id="gradLinha" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="${offset}" stop-color="#4ADE9A"/><stop offset="${offset}" stop-color="#F0685C"/>
+      </linearGradient>
+      <linearGradient id="gradArea" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="${offset}" stop-color="#4ADE9A" stop-opacity="0.35"/>
+        <stop offset="${offset}" stop-color="#F0685C" stop-opacity="0.05"/>
+        <stop offset="1" stop-color="#F0685C" stop-opacity="0.35"/>
+      </linearGradient>
+    </defs>
+    <line x1="${padL}" y1="${y0}" x2="${W-padR}" y2="${y0}" stroke="#8A7539" stroke-dasharray="3 3" stroke-width="1"/>
+    <path d="${pathArea}" fill="url(#gradArea)" stroke="none"/>
+    <path d="${pathTop}" fill="none" stroke="url(#gradLinha)" stroke-width="2.5"/>
+    <text x="4" y="${padT+5}" fill="#525A66" font-size="9">${fmtShort(maxV)}</text>
+    <text x="4" y="${H-padB}" fill="#525A66" font-size="9">${fmtShort(minV)}</text>
+  `;
+}
+
+function desenharBarras(valores){
+  const W=480,H=150,padL=30,padR=8,padT=8,padB=16;
+  const n = valores.length;
+  const maxV = Math.max(1, metaHorasDia, ...valores);
+  const alturaMax = H-padT-padB;
+  const larguraTotal = (W-padL-padR)/n;
+  const larguraBarra = Math.max(1.5, larguraTotal*0.6);
+  let barras = '';
+  valores.forEach((v,i)=>{
+    const altura = (v/maxV)*alturaMax;
+    const xc = padL + i*larguraTotal + larguraTotal/2;
+    const yTopo = padT + (alturaMax-altura);
+    const cor = v<=0 ? 'transparent' : (v>=metaHorasDia ? '#4ADE9A' : '#5A9BD8');
+    barras += `<rect x="${(xc-larguraBarra/2).toFixed(1)}" y="${yTopo.toFixed(1)}" width="${larguraBarra.toFixed(1)}" height="${Math.max(altura,0).toFixed(1)}" rx="1.5" fill="${cor}"/>`;
+  });
+  const yMeta = padT + (alturaMax - (metaHorasDia/maxV)*alturaMax);
+  document.getElementById('grafico').innerHTML = `
+    <line x1="${padL}" y1="${H-padB}" x2="${W-padR}" y2="${H-padB}" stroke="#2A3340" stroke-width="1"/>
+    <line x1="${padL}" y1="${yMeta.toFixed(1)}" x2="${W-padR}" y2="${yMeta.toFixed(1)}" stroke="#8A7539" stroke-dasharray="3 3" stroke-width="1"/>
+    ${barras}
+    <text x="4" y="${padT+5}" fill="#525A66" font-size="9">${fmtHoras(maxV)}</text>
+  `;
+}
+
+/* ================= MODAIS ================= */
+function abrirDia(d){
+  diaSelecionado = d;
+  const e = dadosAtuais[d] || {};
+  if (modo === 'financeiro'){
+    document.getElementById('modalTituloFin').textContent = `${d} de ${MESES[mes]}`;
+    document.getElementById('lucroInput').value = e.lucro ? String(e.lucro).replace('.',',') : '';
+    document.getElementById('origemInput').value = e.origem || '';
+    document.getElementById('gastoInput').value = e.gasto ? String(e.gasto).replace('.',',') : '';
+    document.getElementById('categoriaInput').value = e.categoria || '';
+    document.getElementById('notaInputFin').value = e.nota || '';
+    document.getElementById('overlayFin').classList.add('aberto');
+  } else {
+    document.getElementById('modalTituloHoras').textContent = `${d} de ${MESES[mes]}`;
+    document.getElementById('horaInicio').value = e.inicio || '';
+    document.getElementById('horaFim').value = e.fim || '';
+    document.getElementById('notaInputHoras').value = e.nota || '';
+    document.getElementById('overlayHoras').classList.add('aberto');
+  }
+}
+function fecharModais(){
+  document.getElementById('overlayFin').classList.remove('aberto');
+  document.getElementById('overlayHoras').classList.remove('aberto');
+}
+document.getElementById('overlayFin').addEventListener('click', e=>{ if(e.target.id==='overlayFin') fecharModais(); });
+document.getElementById('overlayHoras').addEventListener('click', e=>{ if(e.target.id==='overlayHoras') fecharModais(); });
+
+document.getElementById('btnAnterior').onclick = ()=>{
+  if (visao === 'mes'){ if(mes===0){mes=11;ano--;}else mes--; carregarMes(); }
+  else { semanaInicioDia -= 7; if (semanaInicioDia < 1) semanaInicioDia = 1; render(); }
+};
+document.getElementById('btnProximo').onclick = ()=>{
+  if (visao === 'mes'){ if(mes===11){mes=0;ano++;}else mes++; carregarMes(); }
+  else { const diasNoMes = new Date(ano,mes+1,0).getDate(); semanaInicioDia += 7; if (semanaInicioDia > diasNoMes) semanaInicioDia = Math.max(1, diasNoMes-6); render(); }
+};
+
+document.getElementById('btnSalvarFin').onclick = async ()=>{
+  const gasto = parseFloat(document.getElementById('gastoInput').value.replace(',','.')) || 0;
+  const lucro = parseFloat(document.getElementById('lucroInput').value.replace(',','.')) || 0;
+  const categoria = document.getElementById('categoriaInput').value;
+  const origem = document.getElementById('origemInput').value.trim();
+  const nota = document.getElementById('notaInputFin').value.trim();
+  const novo = { ...dadosAtuais };
+  if (gasto===0 && lucro===0 && !nota) delete novo[diaSelecionado];
+  else {
+    const entrada = { gasto, lucro };
+    if (categoria) entrada.categoria = categoria;
+    if (origem && lucro>0) entrada.origem = origem;
+    if (nota) entrada.nota = nota;
+    novo[diaSelecionado] = entrada;
+  }
+  fecharModais();
+  await salvarDados(novo);
+};
+document.getElementById('btnLimparFin').onclick = async ()=>{
+  const novo = { ...dadosAtuais };
+  delete novo[diaSelecionado];
+  fecharModais();
+  await salvarDados(novo);
+};
+
+document.getElementById('btnSalvarHoras').onclick = async ()=>{
+  const inicio = document.getElementById('horaInicio').value;
+  const fim = document.getElementById('horaFim').value;
+  const nota = document.getElementById('notaInputHoras').value.trim();
+  const novo = { ...dadosAtuais };
+  if (!inicio || !fim) delete novo[diaSelecionado];
+  else {
+    const entrada = { inicio, fim };
+    if (nota) entrada.nota = nota;
+    novo[diaSelecionado] = entrada;
+  }
+  fecharModais();
+  await salvarDados(novo);
+};
+document.getElementById('btnLimparHoras').onclick = async ()=>{
+  const novo = { ...dadosAtuais };
+  delete novo[diaSelecionado];
+  fecharModais();
+  await salvarDados(novo);
+};
+
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('service-worker.js').catch(()=>{});
+}
+</script>
+</body>
+</html>
